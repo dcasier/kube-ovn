@@ -58,6 +58,7 @@ type Configuration struct {
 	ExternalGatewayConfigNS   string
 	ExternalGatewaySwitch     string // provider network underlay vlan subnet
 	EnableMetrics             bool
+	EnableNodeSwitch          bool
 	EnableArpDetectIPConflict bool
 	KubeletDir                string
 	EnableVerboseConnCheck    bool
@@ -97,6 +98,7 @@ func ParseFlags() *Configuration {
 		argExternalGatewayConfigNS   = pflag.String("external-gateway-config-ns", "kube-system", "The namespace of configmap external-gateway-config, default: kube-system")
 		argExternalGatewaySwitch     = pflag.String("external-gateway-switch", "external", "The name of the external gateway switch which is a ovs bridge to provide external network, default: external")
 		argEnableMetrics             = pflag.Bool("enable-metrics", true, "Whether to support metrics query")
+		argEnableNodeSwitch          = pflag.Bool("enable-node-switch", true, "Enable node connection with cluster")
 		argEnableArpDetectIPConflict = pflag.Bool("enable-arp-detect-ip-conflict", true, "Whether to support arp detect ip conflict in vlan network")
 		argKubeletDir                = pflag.String("kubelet-dir", "/var/lib/kubelet", "Path of the kubelet dir, default: /var/lib/kubelet")
 		argEnableVerboseConnCheck    = pflag.Bool("enable-verbose-conn-check", false, "enable TCP/UDP connectivity check listen port")
@@ -153,6 +155,7 @@ func ParseFlags() *Configuration {
 		ExternalGatewayConfigNS:   *argExternalGatewayConfigNS,
 		ExternalGatewaySwitch:     *argExternalGatewaySwitch,
 		EnableMetrics:             *argEnableMetrics,
+		EnableNodeSwitch:          *argEnableNodeSwitch,
 		EnableArpDetectIPConflict: *argEnableArpDetectIPConflict,
 		KubeletDir:                *argKubeletDir,
 		EnableVerboseConnCheck:    *argEnableVerboseConnCheck,

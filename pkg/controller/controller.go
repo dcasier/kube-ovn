@@ -806,8 +806,10 @@ func (c *Controller) Run(ctx context.Context) {
 		util.LogFatalAndExit(err, "failed to sync crd vlans")
 	}
 
-	if err := c.addNodeGwStaticRoute(); err != nil {
-		util.LogFatalAndExit(err, "failed to add static route for node gateway")
+	if c.config.EnableNodeSwitch {
+		if err := c.addNodeGwStaticRoute(); err != nil {
+			util.LogFatalAndExit(err, "failed to add static route for node gateway")
+		}
 	}
 
 	// start workers to do all the network operations
@@ -947,42 +949,47 @@ func (c *Controller) startWorkers(ctx context.Context) {
 	go wait.Until(c.runAddIPPoolWorker, time.Second, ctx.Done())
 	go wait.Until(c.runAddVlanWorker, time.Second, ctx.Done())
 	go wait.Until(c.runAddNamespaceWorker, time.Second, ctx.Done())
-	err := wait.PollUntilContextCancel(ctx, 3*time.Second, true, func(_ context.Context) (done bool, err error) {
-		subnets := []string{c.config.DefaultLogicalSwitch, c.config.NodeSwitch}
-		klog.Infof("wait for subnets %v ready", subnets)
 
-		return c.allSubnetReady(subnets...)
-	})
-	if err != nil {
-		klog.Fatalf("wait default/join subnet ready error: %v", err)
+	if c.config.EnableNodeSwitch {
+		err := wait.PollUntilContextCancel(ctx, 3*time.Second, true, func(_ context.Context) (done bool, err error) {
+			subnets := []string{c.config.DefaultLogicalSwitch, c.config.NodeSwitch}
+			klog.Infof("wait for subnets %v ready", subnets)
+
+			return c.allSubnetReady(subnets...)
+		})
+		if err != nil {
+			klog.Fatalf("wait default/join subnet ready error: %v", err)
+		}
 	}
 
 	go wait.Until(c.runAddSgWorker, time.Second, ctx.Done())
 	go wait.Until(c.runDelSgWorker, time.Second, ctx.Done())
 	go wait.Until(c.runSyncSgPortsWorker, time.Second, ctx.Done())
 
-	// run node worker before handle any pods
-	for i := 0; i < c.config.WorkerNum; i++ {
-		go wait.Until(c.runAddNodeWorker, time.Second, ctx.Done())
-		go wait.Until(c.runUpdateNodeWorker, time.Second, ctx.Done())
-		go wait.Until(c.runDeleteNodeWorker, time.Second, ctx.Done())
-	}
-	for {
-		ready := true
-		time.Sleep(3 * time.Second)
-		nodes, err := c.nodesLister.List(labels.Everything())
-		if err != nil {
-			util.LogFatalAndExit(err, "failed to list nodes")
+	if c.config.EnableNodeSwitch {
+		// run node worker before handle any pods
+		for i := 0; i < c.config.WorkerNum; i++ {
+			go wait.Until(c.runAddNodeWorker, time.Second, ctx.Done())
+			go wait.Until(c.runUpdateNodeWorker, time.Second, ctx.Done())
+			go wait.Until(c.runDeleteNodeWorker, time.Second, ctx.Done())
 		}
-		for _, node := range nodes {
-			if node.Annotations[util.AllocatedAnnotation] != "true" {
-				klog.Infof("wait node %s annotation ready", node.Name)
-				ready = false
+		for {
+			ready := true
+			time.Sleep(3 * time.Second)
+			nodes, err := c.nodesLister.List(labels.Everything())
+			if err != nil {
+				util.LogFatalAndExit(err, "failed to list nodes")
+			}
+			for _, node := range nodes {
+				if node.Annotations[util.AllocatedAnnotation] != "true" {
+					klog.Infof("wait node %s annotation ready", node.Name)
+					ready = false
+					break
+				}
+			}
+			if ready {
 				break
 			}
-		}
-		if ready {
-			break
 		}
 	}
 
@@ -1066,7 +1073,9 @@ func (c *Controller) startWorkers(ctx context.Context) {
 
 	go wait.Until(c.resyncProviderNetworkStatus, 30*time.Second, ctx.Done())
 	go wait.Until(c.resyncSubnetMetrics, 30*time.Second, ctx.Done())
-	go wait.Until(c.CheckGatewayReady, 5*time.Second, ctx.Done())
+	if c.config.EnableNodeSwitch {
+		go wait.Until(c.CheckGatewayReady, 5*time.Second, ctx.Done())
+	}
 
 	go wait.Until(c.runAddOvnEipWorker, time.Second, ctx.Done())
 	go wait.Until(c.runUpdateOvnEipWorker, time.Second, ctx.Done())

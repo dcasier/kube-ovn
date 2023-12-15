@@ -87,6 +87,7 @@ type Configuration struct {
 	EnableKeepVMIP    bool
 	EnableLbSvc       bool
 	EnableMetrics     bool
+	EnableNodeSwitch  bool
 
 	ExternalGatewaySwitch   string
 	ExternalGatewayConfigNS string
@@ -159,6 +160,7 @@ func ParseFlags() (*Configuration, error) {
 		argKeepVMIP                = pflag.Bool("keep-vm-ip", true, "Whether to keep ip for kubevirt pod when pod is rebuild")
 		argEnableLbSvc             = pflag.Bool("enable-lb-svc", false, "Whether to support loadbalancer service")
 		argEnableMetrics           = pflag.Bool("enable-metrics", true, "Whether to support metrics query")
+		argEnableNodeSwitch        = pflag.Bool("enable-node-switch", true, "Enable node connection with cluster")
 
 		argExternalGatewayConfigNS = pflag.String("external-gateway-config-ns", "kube-system", "The namespace of configmap external-gateway-config, default: kube-system")
 		argExternalGatewaySwitch   = pflag.String("external-gateway-switch", "external", "The name of the external gateway switch which is a ovs bridge to provide external network, default: external")
@@ -246,6 +248,7 @@ func ParseFlags() (*Configuration, error) {
 		InspectInterval:                *argInspectInterval,
 		EnableLbSvc:                    *argEnableLbSvc,
 		EnableMetrics:                  *argEnableMetrics,
+		EnableNodeSwitch:               *argEnableNodeSwitch,
 		BfdMinTx:                       *argBfdMinTx,
 		BfdMinRx:                       *argBfdMinRx,
 		BfdDetectMult:                  *argBfdDetectMult,
@@ -269,7 +272,7 @@ func ParseFlags() (*Configuration, error) {
 		config.DefaultExcludeIps = config.DefaultGateway
 	}
 
-	if config.NodeSwitchGateway == "" {
+	if config.EnableNodeSwitch && config.NodeSwitchGateway == "" {
 		gw, err := util.GetGwByCidr(config.NodeSwitchCIDR)
 		if err != nil {
 			klog.Error(err)
@@ -286,8 +289,10 @@ func ParseFlags() (*Configuration, error) {
 		return nil, err
 	}
 
-	if err := util.CheckSystemCIDR([]string{config.NodeSwitchCIDR, config.DefaultCIDR, config.ServiceClusterIPRange}); err != nil {
-		return nil, fmt.Errorf("check system cidr failed, %v", err)
+	if config.EnableNodeSwitch {
+		if err := util.CheckSystemCIDR([]string{config.NodeSwitchCIDR, config.DefaultCIDR, config.ServiceClusterIPRange}); err != nil {
+			return nil, fmt.Errorf("check system cidr failed, %v", err)
+		}
 	}
 
 	klog.Infof("config is  %+v", config)

@@ -56,9 +56,12 @@ func CmdMain() {
 	if err = daemon.InitMirror(config); err != nil {
 		util.LogFatalAndExit(err, "failed to initialize ovs mirror")
 	}
-	klog.Info("init node gw")
-	if err = daemon.InitNodeGateway(config); err != nil {
-		util.LogFatalAndExit(err, "failed to initialize node gateway")
+
+	if config.EnableNodeSwitch {
+		klog.Info("init node gw")
+		if err = daemon.InitNodeGateway(config); err != nil {
+			util.LogFatalAndExit(err, "failed to initialize node gateway")
+		}
 	}
 
 	stopCh := signals.SetupSignalHandler().Done()

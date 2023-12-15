@@ -597,20 +597,28 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 	}
 
 	klog.Info("Started workers")
-	go wait.Until(c.loopOvn0Check, 5*time.Second, stopCh)
+	if c.config.EnableNodeSwitch {
+		go wait.Until(c.loopOvn0Check, 5*time.Second, stopCh)
+	}
 	go wait.Until(c.loopOvnExt0Check, 5*time.Second, stopCh)
 	go wait.Until(c.runAddOrUpdateProviderNetworkWorker, time.Second, stopCh)
 	go wait.Until(c.runDeleteProviderNetworkWorker, time.Second, stopCh)
-	go wait.Until(c.runSubnetWorker, time.Second, stopCh)
+	if c.config.EnableNodeSwitch {
+		go wait.Until(c.runSubnetWorker, time.Second, stopCh)
+	}
 	go wait.Until(c.runPodWorker, time.Second, stopCh)
-	go wait.Until(c.runGateway, 3*time.Second, stopCh)
+	if c.config.EnableNodeSwitch {
+		go wait.Until(c.runGateway, 3*time.Second, stopCh)
+	}
 	go wait.Until(c.loopEncapIPCheck, 3*time.Second, stopCh)
 	go wait.Until(c.ovnMetricsUpdate, 3*time.Second, stopCh)
-	go wait.Until(func() {
-		if err := c.reconcileRouters(nil); err != nil {
-			klog.Errorf("failed to reconcile ovn0 routes: %v", err)
-		}
-	}, 3*time.Second, stopCh)
+	if c.config.EnableNodeSwitch {
+		go wait.Until(func() {
+			if err := c.reconcileRouters(nil); err != nil {
+				klog.Errorf("failed to reconcile ovn0 routes: %v", err)
+			}
+		}, 3*time.Second, stopCh)
+	}
 	go wait.Until(func() {
 		if err := c.markAndCleanInternalPort(); err != nil {
 			klog.Errorf("gc ovs port error: %v", err)

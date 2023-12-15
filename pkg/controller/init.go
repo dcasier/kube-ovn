@@ -41,9 +41,11 @@ func (c *Controller) InitOVN() error {
 		return err
 	}
 
-	if err = c.initNodeSwitch(); err != nil {
-		klog.Errorf("init node switch failed: %v", err)
-		return err
+	if c.config.EnableNodeSwitch {
+		if err = c.initNodeSwitch(); err != nil {
+			klog.Errorf("init node switch failed: %v", err)
+			return err
+		}
 	}
 
 	if err = c.initDefaultLogicalSwitch(); err != nil {

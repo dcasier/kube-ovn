@@ -1044,10 +1044,12 @@ func (c *Controller) reconcileSubnet(subnet *kubeovnv1.Subnet) error {
 		return err
 	}
 
-	if subnet.Spec.Vpc == c.config.ClusterRouter {
-		if err := c.reconcileOvnDefaultVpcRoute(subnet); err != nil {
-			klog.Errorf("reconcile default vpc ovn route for subnet %s failed: %v", subnet.Name, err)
-			return err
+	if c.config.EnableNodeSwitch {
+		if subnet.Spec.Vpc == c.config.ClusterRouter {
+			if err := c.reconcileOvnDefaultVpcRoute(subnet); err != nil {
+				klog.Errorf("reconcile default vpc ovn route for subnet %s failed: %v", subnet.Name, err)
+				return err
+			}
 		}
 	}
 

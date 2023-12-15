@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+OVN_LOCAL_ADDR=${OVN_LOCAL_ADDR:-false}
 ENABLE_SSL=${ENABLE_SSL:-false}
 OVN_DB_IPS=${OVN_DB_IPS:-}
 
@@ -29,8 +30,13 @@ function gen_conn_str {
   echo "$x"
 }
 
-nb_addr="$(gen_conn_str 6641)"
-sb_addr="$(gen_conn_str 6642)"
+if [[ "$OVN_LOCAL_ADDR" == "false" ]]; then
+  nb_addr="$(gen_conn_str 6641)"
+  sb_addr="$(gen_conn_str 6642)"
+else
+  nb_addr="unix:/run/ovn/ovnnb_db.sock"
+  sb_addr="unix:/run/ovn/ovnsb_db.sock"
+fi
 
 exec ./kube-ovn-controller --ovn-nb-addr="$nb_addr" \
                            --ovn-sb-addr="$sb_addr" \

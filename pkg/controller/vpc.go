@@ -325,38 +325,40 @@ func (c *Controller) handleAddOrUpdateVpc(key string) error {
 			staticRouteMapping[util.MainRouteTable] = nil
 		}
 
-		joinSubnet, err := c.subnetsLister.Get(c.config.NodeSwitch)
-		if err != nil {
-			if !k8serrors.IsNotFound(err) {
-				klog.Error("failed to get node switch subnet %s: %v", c.config.NodeSwitch)
-				return err
+		if c.config.EnableNodeSwitch {
+			joinSubnet, err := c.subnetsLister.Get(c.config.NodeSwitch)
+			if err != nil {
+				if !k8serrors.IsNotFound(err) {
+					klog.Error("failed to get node switch subnet %s: %v", c.config.NodeSwitch)
+					return err
+				}
 			}
-		}
-		gatewayV4, gatewayV6 := util.SplitStringIP(joinSubnet.Spec.Gateway)
-		if gatewayV4 != "" {
-			for tabele := range staticRouteMapping {
-				staticTargetRoutes = append(
-					staticTargetRoutes,
-					&kubeovnv1.StaticRoute{
-						Policy:     kubeovnv1.PolicyDst,
-						CIDR:       "0.0.0.0/0",
-						NextHopIP:  gatewayV4,
-						RouteTable: tabele,
-					},
-				)
+			gatewayV4, gatewayV6 := util.SplitStringIP(joinSubnet.Spec.Gateway)
+			if gatewayV4 != "" {
+				for tabele := range staticRouteMapping {
+					staticTargetRoutes = append(
+						staticTargetRoutes,
+						&kubeovnv1.StaticRoute{
+							Policy:     kubeovnv1.PolicyDst,
+							CIDR:       "0.0.0.0/0",
+							NextHopIP:  gatewayV4,
+							RouteTable: tabele,
+						},
+					)
+				}
 			}
-		}
-		if gatewayV6 != "" {
-			for tabele := range staticRouteMapping {
-				staticTargetRoutes = append(
-					staticTargetRoutes,
-					&kubeovnv1.StaticRoute{
-						Policy:     kubeovnv1.PolicyDst,
-						CIDR:       "::/0",
-						NextHopIP:  gatewayV6,
-						RouteTable: tabele,
-					},
-				)
+			if gatewayV6 != "" {
+				for tabele := range staticRouteMapping {
+					staticTargetRoutes = append(
+						staticTargetRoutes,
+						&kubeovnv1.StaticRoute{
+							Policy:     kubeovnv1.PolicyDst,
+							CIDR:       "::/0",
+							NextHopIP:  gatewayV6,
+							RouteTable: tabele,
+						},
+					)
+				}
 			}
 		}
 
