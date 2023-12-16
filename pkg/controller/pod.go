@@ -833,7 +833,7 @@ func (c *Controller) reconcileRouteSubnets(cachedPod, pod *v1.Pod, needRoutePodN
 					return err
 				}
 
-			} else {
+			} else if c.config.EnableNodeSwitch {
 				if subnet.Spec.GatewayType == kubeovnv1.GWDistributedType && pod.Annotations[util.NorthGatewayAnnotation] == "" {
 					nodeTunlIPAddr, err := getNodeTunlIP(node)
 					if err != nil {
