@@ -273,10 +273,28 @@ func configureContainerNic(nicName, ifName, ipAddr, gateway string, isDefaultRou
 			}
 
 			for _, gw := range strings.Split(containerGw, ",") {
+				var mask string
+				if ip := net.ParseIP(gw); ip == nil {
+					mask = "/32"
+				} else {
+					mask = "/128"
+				}
+				dst, dstNet, err := net.ParseCIDR(gw + mask)
+				if err != nil {
+					return fmt.Errorf("invalid route destination %s: %v", gw+mask, err)
+				}
+
 				if err = netlink.RouteReplace(&netlink.Route{
 					LinkIndex: containerLink.Attrs().Index,
 					Scope:     netlink.SCOPE_UNIVERSE,
-					Gw:        net.ParseIP(gw),
+					Dst:       dstNet,
+				}); err != nil {
+					return fmt.Errorf("failed to configure default gateway %s: %v", gw, err)
+				}
+				if err = netlink.RouteReplace(&netlink.Route{
+					LinkIndex: containerLink.Attrs().Index,
+					Scope:     netlink.SCOPE_UNIVERSE,
+					Gw:        dst,
 				}); err != nil {
 					return fmt.Errorf("failed to configure default gateway %s: %v", gw, err)
 				}
@@ -821,6 +839,7 @@ func configureNic(link, ip string, macAddr net.HardwareAddr, mtu int, detectIPCo
 		if err != nil {
 			return fmt.Errorf("can not parse address %s: %v", ipStr, err)
 		}
+		ipAddr.Flags = unix.IFA_F_NOPREFIXROUTE
 		ipAddMap[ipStr] = *ipAddr
 	}
 
